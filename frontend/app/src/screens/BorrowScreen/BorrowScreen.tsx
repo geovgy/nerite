@@ -5,9 +5,11 @@ import type { Address } from "@/src/types";
 
 import { ConnectWarningBox } from "@/src/comps/ConnectWarningBox/ConnectWarningBox";
 import { Field } from "@/src/comps/Field/Field";
-import { InterestRateField } from "@/src/comps/InterestRateField/InterestRateField";
+import { InterestRateField } from "@/src/comps/ManagedInterestRateField/ManagedInterestRateField";
 import { RedemptionInfo } from "@/src/comps/RedemptionInfo/RedemptionInfo";
 import { Screen } from "@/src/comps/Screen/Screen";
+import { useStoredState } from "@/src/services/StoredState";
+import { FirstTimeOnboardingModal } from "./FirstTimeOnboardingModal";
 import {
   DEBT_SUGGESTIONS,
   ETH_MAX_RESERVE,
@@ -112,6 +114,18 @@ export function BorrowScreen() {
   const [interestRateDelegate, setInterestRateDelegate] =
     useState<Address | null>(null);
 
+  // First-time user onboarding modal
+  const { onboardingDismissed, setState: setStoredState } = useStoredState();
+  const [onboardingClosed, setOnboardingClosed] = useState(false);
+
+  // Show modal if not dismissed in localStorage AND not closed in this session
+  const showOnboarding = !onboardingDismissed && !onboardingClosed;
+
+  const handleOnboardingClose = () => {
+    setOnboardingClosed(true);
+    setStoredState({ onboardingDismissed: true });
+  };
+
   const collPrice = usePrice(collateral.symbol);
 
   const balances = Object.fromEntries(
@@ -206,6 +220,12 @@ export function BorrowScreen() {
     return '';
   }
 
+  const ltv =
+    deposit.parsed &&
+    debt.parsed &&
+    collPrice.data &&
+    getLtv(deposit.parsed, debt.parsed, collPrice.data);
+
   const allowSubmit =
     account.isConnected &&
     deposit.parsed &&
@@ -215,14 +235,21 @@ export function BorrowScreen() {
     interestRate &&
     dn.gt(interestRate, 0) &&
     !isBelowMinDebt &&
-    !isAboveMaxDebtLimit;
+    !isAboveMaxDebtLimit &&
+    ltv &&
+    dn.lte(ltv, loanDetails.maxLtv);
 
   return (
-    <Screen
-      heading={{
-        title: (
-          <HFlex>
-            {content.borrowScreen.headline(
+    <>
+      <FirstTimeOnboardingModal
+        visible={showOnboarding}
+        onClose={handleOnboardingClose}
+      />
+      <Screen
+        heading={{
+          title: (
+            <HFlex>
+              {content.borrowScreen.headline(
               <TokenIcon.Group>
                 {contracts.collaterals.map(({ symbol }) => (
                   <TokenIcon key={symbol} symbol={symbol} />
@@ -384,7 +411,7 @@ export function BorrowScreen() {
           // “Interest rate”
           field={
             <InterestRateField
-              collIndex={collIndex}
+              branchId={collIndex}
               debt={debt.parsed}
               delegate={interestRateDelegate}
               inputId='input-interest-rate'
@@ -392,7 +419,7 @@ export function BorrowScreen() {
               mode={interestRateMode}
               onChange={setInterestRate}
               onDelegateChange={setInterestRateDelegate}
-              onModeChange={setInterestRateMode}
+              onModeChange={setInterestRateMode as any}
             />
           }
           footer={{
@@ -476,5 +503,6 @@ export function BorrowScreen() {
         </div>
       </div>
     </Screen>
+    </>
   );
 }

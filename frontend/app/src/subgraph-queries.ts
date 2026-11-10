@@ -74,11 +74,89 @@ export const FullTroveQueryFragment = graphql(`
   }
 `);
 
+export const TrovesQuery = graphql(`
+  query Troves {
+    troves(
+      orderBy: updatedAt
+      orderDirection: desc
+    ) {
+      id
+      borrower
+      closedAt
+      createdAt
+      debt
+      deposit
+      interestRate
+      mightBeLeveraged
+      stake
+      status
+      troveId
+      updatedAt
+      collateral {
+        id
+        token {
+          symbol
+          name
+        }
+        minCollRatio
+        collIndex
+      }
+      interestBatch {
+        id
+        annualInterestRate
+        annualManagementFee
+        batchManager
+      }
+    }
+  }
+`);
+
 export const TrovesByAccountQuery = graphql(`
   query TrovesByAccount($account: Bytes!) {
     troves(
       where: {
         borrower: $account,
+        status_in: [active,redeemed,liquidated],
+      }
+      orderBy: updatedAt
+      orderDirection: desc
+    ) {
+      id
+      borrower
+      closedAt
+      createdAt
+      debt
+      deposit
+      interestRate
+      mightBeLeveraged
+      stake
+      status
+      troveId
+      updatedAt
+      collateral {
+        id
+        token {
+          symbol
+          name
+        }
+        minCollRatio
+        collIndex
+      }
+      interestBatch {
+        id
+        annualInterestRate
+        annualManagementFee
+        batchManager
+      }
+    }
+  }
+`);
+
+export const TrovesByAccountsQuery = graphql(`
+  query TrovesByAccounts($accounts: [Bytes!]!) {
+    troves(
+      where: {
+        borrower_in: $accounts,
         status_in: [active,redeemed,liquidated],
       }
       orderBy: updatedAt
@@ -289,7 +367,7 @@ export const GovernanceStats = graphql(`
   }
 `);
 
-export const GovernanceUserAllocated = graphql(`
+export const GovernanceUserAllocations = graphql(`
   query GovernanceUserAllocations($id: ID!) {
     governanceUser(id: $id) {
       allocated

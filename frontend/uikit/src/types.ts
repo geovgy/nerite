@@ -15,12 +15,28 @@ export type TokenSymbol =
   | "RSETH"
   | "TBTC"
   | "WETH"
-  | "WEETH";
+  | "WEETH"
+  | "YUSND"
+  | "SUP"
+  | "SHELL";
 
 export type Token = {
   icon: string;
   name: string;
   symbol: TokenSymbol;
+};
+
+export type StrategyId = 
+  | "balancer"
+  | "camelot"
+  | "spectra"
+  | "teller"
+  | "pooltogether";
+
+export type Strategy = {
+  id: StrategyId;
+  icon: string;
+  name: string;
 };
 
 export type StatusMode = "positive" | "warning" | "negative" | "neutral";

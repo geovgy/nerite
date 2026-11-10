@@ -97,6 +97,14 @@ import {
   updateLoanInterestRate,
   type UpdateLoanInterestRateRequest,
 } from "@/src/tx-flows/updateLoanInterestRate";
+import {
+  yusndDeposit,
+  type YusndDepositRequest,
+} from "@/src/tx-flows/yusndDeposit";
+import {
+  yusndRedeem,
+  type YusndRedeemRequest,
+} from "@/src/tx-flows/yusndRedeem";
 
 export type FlowRequestMap = {
   allocateVotingPower: AllocateVotingPowerRequest;
@@ -113,6 +121,8 @@ export type FlowRequestMap = {
   updateBorrowPosition: UpdateBorrowPositionRequest;
   updateLeveragePosition: UpdateLeveragePositionRequest;
   updateLoanInterestRate: UpdateLoanInterestRateRequest;
+  yusndDeposit: YusndDepositRequest;
+  yusndRedeem: YusndRedeemRequest;
 };
 
 const FlowIdSchema = v.union([
@@ -130,6 +140,8 @@ const FlowIdSchema = v.union([
   v.literal("updateBorrowPosition"),
   v.literal("updateLeveragePosition"),
   v.literal("updateLoanInterestRate"),
+  v.literal("yusndDeposit"),
+  v.literal("yusndRedeem"),
 ]);
 
 export const flows: FlowsMap = {
@@ -147,6 +159,8 @@ export const flows: FlowsMap = {
   updateBorrowPosition,
   updateLeveragePosition,
   updateLoanInterestRate,
+  yusndDeposit: yusndDeposit,
+  yusndRedeem: yusndRedeem,
 };
 
 /* end of flows registration */
@@ -534,19 +548,29 @@ function useFlowManager(account: Address | null, isSafe: boolean = false) {
           error: null,
         });
       } catch (error) {
+        const insufficientFunds = error instanceof Error
+          && /insufficient funds for gas/i.test(error.message);
+
         updateFlowStep(stepIndex, {
           status: "error",
           artifact: currentArtifact,
-          error:
-            error instanceof Error
-              ? {
-                  name:
-                    error.name.toLowerCase().trim() === "error"
-                      ? null
-                      : error.name,
-                  message: error.message,
-                }
-              : { name: null, message: String(error) },
+          error: insufficientFunds
+            ? {
+                name: null,
+                message:
+                  "You don't have enough ETH in your wallet to cover the gas"
+                  + " deposit and transaction fees. Please add more ETH and try"
+                  + " again.",
+              }
+            : error instanceof Error
+            ? {
+                name:
+                  error.name.toLowerCase().trim() === "error"
+                    ? null
+                    : error.name,
+                message: error.message,
+              }
+            : { name: null, message: String(error) },
         });
         console.error(`Error at step ${stepIndex}:`, error);
       } finally {

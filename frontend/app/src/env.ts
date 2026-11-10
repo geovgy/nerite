@@ -21,6 +21,8 @@ export const CollateralSymbolSchema = v.union([
 
 export const EnvSchema = v.pipe(
   v.object({
+    DISABLE_TRANSACTIONS: v.optional(vEnvFlag(), "false"),
+    SUMMERSTONE_API_URL: v.string(),
     ACCOUNT_SCREEN: v.optional(vEnvFlag(), "false"),
     APP_COMMIT_HASH: v.string(),
     APP_COMMIT_URL: v.pipe(
@@ -130,6 +132,8 @@ export const EnvSchema = v.pipe(
     SAFE_API_URL: v.optional(v.pipe(v.string(), v.url())),
     SQUID_INTEGRATOR_ID: v.optional(v.string(), ""),
     SUBGRAPH_URL: v.pipe(v.string(), v.url()),
+    SHELL_SUBGRAPH_URL: v.pipe(v.string(), v.url()),
+    UNISWAP_V4_SUBGRAPH_URL: v.pipe(v.string(), v.url()),
     VERCEL_ANALYTICS: v.optional(vEnvFlag(), "false"),
     WALLET_CONNECT_PROJECT_ID: v.pipe(
       v.string(),
@@ -139,6 +143,11 @@ export const EnvSchema = v.pipe(
         "WALLET_CONNECT_PROJECT_ID must be set",
       ),
     ),
+    
+    CONTRACT_SHELL_TOKEN: vAddress(),
+
+    CONTRACT_YUSND: vAddress(),
+    YUSND_STATS_URL: v.optional(v.pipe(v.string(), v.url())),
 
     CONTRACT_BOLD_TOKEN: vAddress(),
     CONTRACT_COLLATERAL_REGISTRY: vAddress(),
@@ -334,6 +343,8 @@ export const EnvSchema = v.pipe(
 export type Env = v.InferOutput<typeof EnvSchema>;
 
 const parsedEnv = v.safeParse(EnvSchema, {
+  DISABLE_TRANSACTIONS: process.env.NEXT_PUBLIC_DISABLE_TRANSACTIONS,
+  SUMMERSTONE_API_URL: process.env.NEXT_PUBLIC_SUMMERSTONE_API_URL,
   ACCOUNT_SCREEN: process.env.NEXT_PUBLIC_ACCOUNT_SCREEN,
   APP_VERSION: (
     // APP_VERSION_FROM_BUILD is set at build time (see next.config.js)
@@ -379,8 +390,14 @@ const parsedEnv = v.safeParse(EnvSchema, {
   LIQUITY_STATS_URL: process.env.NEXT_PUBLIC_LIQUITY_STATS_URL,
   SAFE_API_URL: process.env.NEXT_PUBLIC_SAFE_API_URL,
   SUBGRAPH_URL: process.env.NEXT_PUBLIC_SUBGRAPH_URL,
+  SHELL_SUBGRAPH_URL: process.env.NEXT_PUBLIC_SHELL_SUBGRAPH_URL,
+  UNISWAP_V4_SUBGRAPH_URL: process.env.NEXT_PUBLIC_UNISWAP_V4_SUBGRAPH_URL,
   VERCEL_ANALYTICS: process.env.NEXT_PUBLIC_VERCEL_ANALYTICS,
   WALLET_CONNECT_PROJECT_ID: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
+
+  CONTRACT_SHELL_TOKEN: process.env.NEXT_PUBLIC_CONTRACT_SHELL_TOKEN,
+  CONTRACT_YUSND: process.env.NEXT_PUBLIC_CONTRACT_YUSND,
+  YUSND_STATS_URL: process.env.NEXT_PUBLIC_YUSND_STATS_URL,
 
   CONTRACT_BOLD_TOKEN: process.env.NEXT_PUBLIC_CONTRACT_BOLD_TOKEN,
   CONTRACT_COLLATERAL_REGISTRY: process.env.NEXT_PUBLIC_CONTRACT_COLLATERAL_REGISTRY,
@@ -528,6 +545,8 @@ if (!parsedEnv.success) {
 }
 
 export const {
+  DISABLE_TRANSACTIONS,
+  SUMMERSTONE_API_URL,
   ACCOUNT_SCREEN,
   APP_COMMIT_HASH,
   APP_COMMIT_URL,
@@ -548,6 +567,8 @@ export const {
   COLLATERAL_CONTRACTS,
   CONTRACTS_COMMIT_HASH,
   CONTRACTS_COMMIT_URL,
+  CONTRACT_YUSND,
+  YUSND_STATS_URL,
   CONTRACT_BOLD_TOKEN,
   CONTRACT_COLLATERAL_REGISTRY,
   CONTRACT_EXCHANGE_HELPERS,
@@ -556,6 +577,7 @@ export const {
   CONTRACT_LQTY_STAKING,
   CONTRACT_LQTY_TOKEN,
   CONTRACT_LUSD_TOKEN,
+  CONTRACT_SHELL_TOKEN,
   CONTRACT_MULTI_TROVE_GETTER,
   CONTRACT_WETH,
   DELEGATE_AUTO,
@@ -566,6 +588,8 @@ export const {
   LIQUITY_STATS_URL,
   SAFE_API_URL,
   SUBGRAPH_URL,
+  SHELL_SUBGRAPH_URL,
+  UNISWAP_V4_SUBGRAPH_URL,
   VERCEL_ANALYTICS,
   WALLET_CONNECT_PROJECT_ID,
 } = parsedEnv.output;

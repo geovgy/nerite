@@ -8,8 +8,14 @@ const SquidWidget = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex justify-center items-center h-32 w-full">
-        <div className="text-lg">Loading widget...</div>
+      <div className="flex flex-col justify-center items-center w-full gap-3 mt-1">
+        <div className="w-[480px] h-[660px] bg-gray-100 rounded-[2rem] animate-pulse" style={{ boxShadow: "0px 2px 4px 0px rgba(0, 0, 0, 0.20), 0px 5px 50px -1px rgba(0, 0, 0, 0.33)" }}>
+          <div className="flex justify-center items-center h-full w-full">
+            <div className="relative h-8 w-8 flex items-center justify-center mt-8">
+              <div className="absolute inset-0 rounded-full border-3 border-gray-300 border-t-transparent animate-spin"></div>
+            </div>
+          </div>
+        </div>
       </div>
     ),
   }
@@ -18,9 +24,9 @@ const SquidWidget = dynamic(
 export function SquidRouterWidget() {
   return (
     <SquidWidget config={{
-      "integratorId": process.env.NEXT_PUBLIC_SQUID_INTEGRATOR_ID ?? "",
-      "theme": {
-        "borderRadius": {
+      integratorId: process.env.NEXT_PUBLIC_SQUID_INTEGRATOR_ID ?? "",
+      theme: {
+        borderRadius: {
           "button-lg-primary": "3.75rem",
           "button-lg-secondary": "3.75rem",
           "button-lg-tertiary": "3.75rem",
@@ -36,7 +42,7 @@ export function SquidRouterWidget() {
           "menu-lg": "1.25rem",
           "modal": "1.875rem"
         },
-        "fontSize": {
+        fontSize: {
           "caption": "0.875rem",
           "body-small": "1.14375rem",
           "body-medium": "1.40625rem",
@@ -45,7 +51,7 @@ export function SquidRouterWidget() {
           "heading-medium": "3.08125rem",
           "heading-large": "4.40625rem"
         },
-        "fontWeight": {
+        fontWeight: {
           "caption": "400",
           "body-small": "400",
           "body-medium": "400",
@@ -54,15 +60,15 @@ export function SquidRouterWidget() {
           "heading-medium": "400",
           "heading-large": "400"
         },
-        "boxShadow": {
+        boxShadow: {
           "container": "0px 2px 4px 0px rgba(0, 0, 0, 0.20), 0px 5px 50px -1px rgba(0, 0, 0, 0.33)"
         },
-        "color": {
+        color: {
           "grey-100": "#FBFBFD",
           "grey-200": "#EDEFF3",
           "grey-300": "#2f4225",
           "grey-400": "#A7ABBE",
-          "grey-500": "#cfcfdb",
+          "grey-500": "#2f4225",
           "grey-600": "#676B7E",
           "grey-700": "#4C515D",
           "grey-800": "#f3eee2",
@@ -72,8 +78,8 @@ export function SquidRouterWidget() {
           "royal-500": "#2f4225",
           "royal-600": "#8353C5",
           "royal-700": "#6B45A1",
-          "status-positive": "#f3c2a5",
-          "status-negative": "#cfcfdb",
+          "status-positive": "#8bb2b7",
+          "status-negative": "#f3c2a5",
           "status-partial": "#676B7E",
           "highlight-700": "#E4FE53",
           "animation-bg": "#2f4225",
@@ -106,14 +112,23 @@ export function SquidRouterWidget() {
           "modal-backdrop": "#17191C54"
         }
       },
-      "apiUrl": "https://v2.api.squidrouter.com",
-      "priceImpactWarnings": {
+      apiUrl: "https://v2.api.squidrouter.com",
+      priceImpactWarnings: {
         "warning": 3,
         "critical": 5
       },
-      "initialAssets": {},
-      "loadPreviousStateFromLocalStorage": true,
-      "hideAnimations": false
+      initialAssets: {
+        from: {
+          address: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", // ETH on Arbitrum
+          chainId: "42161",
+        },
+        to: {
+          address: "0x4ecf61a6c2fab8a047ceb3b3b263b401763e9d49", // USND
+          chainId: "42161",
+        }
+      },
+      loadPreviousStateFromLocalStorage: true,
+      hideAnimations: false
     }} />
   )
 }

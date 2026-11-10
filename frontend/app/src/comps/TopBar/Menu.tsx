@@ -12,6 +12,9 @@ export type MenuItemType =
   | 'multiply'
   | 'earn'
   | 'buy'
+  | 'stream'
+  | 'ecosystem'
+  | 'troves'
   // | 'stake';
 
 export type HrefTarget = '_self' | '_blank';

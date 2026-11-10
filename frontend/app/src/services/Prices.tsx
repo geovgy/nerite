@@ -14,8 +14,13 @@ import * as dn from "dnum";
 import * as v from "valibot";
 import { useReadContract } from "wagmi";
 
-type PriceToken = "LQTY" | "NERI" | "USND" | "LUSD" | CollateralSymbol;
+type PriceToken = "LQTY" | "NERI" | "USND" | "LUSD" | "yUSND" | "SUP" | CollateralSymbol;
 
+// TODO: Fix type errors in useReadContract here.
+// Our PriceFeed contract has a fetchPrice function that returns a tuple of
+// (uint256, bool) instead of getPrice that expects a uint256. However,
+// it gives a type error for not using getPrice and returning a tuple.
+// Using the `any` type to bypass the type error.
 function useCollateralPrice(
   symbol: null | CollateralSymbol
 ): UseQueryResult<Dnum> {
@@ -29,23 +34,24 @@ function useCollateralPrice(
 
   return useReadContract({
     ...PriceFeed,
-    // functionName: "fetchPrice",
-    functionName: "getPrice",
+    functionName: "fetchPrice" as any,
+    // functionName: "getPrice",
     query: {
       enabled: symbol !== null,
       refetchInterval: PRICE_REFRESH_INTERVAL,
-      // select: ([price]) => dnum18(price),
-      select: (price) => dnum18(price),
+      select: ([price]: any) => dnum18(price),
+      // select: (price) => dnum18(price),
     },
   });
 }
 
-type CoinGeckoSymbol = TokenSymbol & ("LQTY" | "LUSD");
+type CoinGeckoSymbol = TokenSymbol & ("LQTY" | "LUSD" | "SUP");
 const coinGeckoTokenIds: {
   [key in CoinGeckoSymbol]: string;
 } = {
   LQTY: "liquity",
   LUSD: "liquity-usd",
+  SUP: "superfluid",
 };
 
 function useCoinGeckoPrice(
@@ -115,7 +121,7 @@ function useCoinGeckoPrice(
 export function usePrice<PT extends PriceToken>(
   symbol: PT | null
 ): UseQueryResult<Dnum> {
-  const fromCoinGecko = symbol === "LQTY" || symbol === "LUSD";
+  const fromCoinGecko = symbol === "LQTY" || symbol === "LUSD" || symbol === "SUP";
   const fromPriceFeed =
     !fromCoinGecko && symbol !== null && isCollateralSymbol(symbol);
 

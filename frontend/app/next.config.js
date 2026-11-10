@@ -20,7 +20,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 export default withBundleAnalyzer({
-  output: "export",
+  // output: "export",
   reactStrictMode: false,
   images: { unoptimized: true },
   trailingSlash: flag(process.env.NEXT_TRAILING_SLASH),
@@ -45,6 +45,28 @@ export default withBundleAnalyzer({
           { key: "Access-Control-Allow-Credentials", value: "true" },
           { key: "Access-Control-Allow-Origin", value: "*" },
           { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS" },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "Origin, Content-Type, Accept",
+          },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET" },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "X-Requested-With, Content-Type, Authorization",
+          },
+        ],
+      },
+      {
+        source: "/nerite.svg",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET" },
           {
             key: "Access-Control-Allow-Headers",
             value: "Origin, Content-Type, Accept",

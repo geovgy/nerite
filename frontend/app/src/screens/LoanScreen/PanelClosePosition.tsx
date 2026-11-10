@@ -139,13 +139,15 @@ export function PanelClosePosition({ loan }: { loan: PositionLoanCommitted }) {
                           className={css({
                             color: "contentAlt",
                             fontWeight: 400,
+                            fontSize: 14,
                           })}
                         >
-                          {repayToken.symbol === "USND" ? " account" : " loan"}
+                          {repayToken.symbol === "USND" ? " (account)" : " (collateral)"}
                         </span>
                       </>
                     ),
                   })}
+                  // TODO: Enable repaying with collateral later after testing flashloan swap in Zappers
                   items={(["USND", collToken.symbol] as const).map(
                     (symbol) => ({
                       icon: <TokenIcon symbol={symbol} />,

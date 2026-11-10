@@ -12,9 +12,12 @@ export default {
     dashboard: "Dashboard",
     borrow: "Borrow",
     multiply: "Multiply",
+    troves: "Troves",
     earn: "Earn",
     stake: "Stake",
     buy: "Buy USND",
+    stream: "Stream",
+    ecosystem: "Ecosystem",
   },
 
   accountButton: {
@@ -229,6 +232,10 @@ export default {
         title: "USND",
         description: "Buy USND",
       },
+      stream: {
+        title: "Stream USND with Superfluid",
+        description: "Send USND continuously by the millisecond. Perfect for subscriptions, payroll, etc.",
+      },
     },
     statsBar: {
       label: "Protocol stats",
@@ -338,6 +345,19 @@ export default {
         <>Total USND covering {collateral}-backed position liquidations</>,
       ],
     },
+    strategySection: {
+      headline: (strategyIcons: N) => (
+        <>
+          Strategies {strategyIcons}
+        </>
+      ),
+      subheading: (
+        <>
+          Partnered Protocols with other USND strategies. 
+          Earn additional yield or find other opportunities from these third party protocols.
+        </>
+      )
+    }
   },
 
   // Earn screen
@@ -360,8 +380,8 @@ export default {
       rewardsLabel: "My rewards",
     },
     tabs: {
-      deposit: "Deposit",
-      claim: "Claim rewards",
+      deposit: "Deposit & Withdraw",
+      claim: "Claim Rewards",
     },
     depositPanel: {
       label: "Increase deposit",
@@ -426,6 +446,20 @@ export default {
     ),
     subheading: <>Buy USND</>,
     learnMore: ["https://docs.nerite.org/docs/user-docs/NERI-staking-and-voting", "Learn more"],
+  },
+
+  ecosystemScreen: {
+    headline: (ecosystemIcon: N) => (
+      <>
+        Ecosystem {ecosystemIcon}
+      </>
+    ),
+    subheading: (
+      <>
+        Partnered Protocols with other USND strategies. 
+        Earn additional yield or find other opportunities from these third party protocols.
+      </>
+    ),
   },
 
   stakeScreen: {

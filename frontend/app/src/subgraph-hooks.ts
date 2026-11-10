@@ -1,15 +1,25 @@
 import type {
   InterestBatchQuery as InterestBatchQueryType,
-  StabilityPoolDepositQuery as StabilityPoolDepositQueryType,
   TrovesByAccountQuery as TrovesByAccountQueryType,
 } from "@/src/graphql/graphql";
-import type { Address, CollIndex, Delegate, PositionEarn, PositionLoanCommitted, PrefixedTroveId } from "@/src/types";
+import type {
+  Address,
+  CollateralSymbol,
+  CollIndex,
+  Delegate,
+  PositionEarn,
+  PositionLoanCommitted,
+  PrefixedTroveId,
+  ReturnCombinedTroveReadCallData,
+  ReturnTroveReadCallData,
+  TroveExplorerItem,
+} from "@/src/types";
 
 import { DATA_REFRESH_INTERVAL } from "@/src/constants";
 import { ACCOUNT_POSITIONS } from "@/src/demo-mode";
 import { dnum18 } from "@/src/dnum-utils";
-import { DEMO_MODE } from "@/src/env";
-import { isCollIndex, isPositionLoanCommitted, isPrefixedtroveId, isTroveId } from "@/src/types";
+import { DEMO_MODE, SUBGRAPH_URL } from "@/src/env";
+import { isCollIndex, isPositionLoanCommitted, isPrefixedtroveId, isTroveId, TroveStatus } from "@/src/types";
 import { sleep } from "@/src/utils";
 import { isAddress, shortenAddress } from "@liquity2/uikit";
 import { useQuery } from "@tanstack/react-query";
@@ -30,7 +40,11 @@ import {
   StabilityPoolsQuery,
   TroveByIdQuery,
   TrovesByAccountQuery,
+  TrovesByAccountsQuery,
 } from "./subgraph-queries";
+import { getContracts } from "./contracts";
+import { getAllDebtPerInterestRate, getTroveById, getTrovesByAccount } from "./liquity-read-calls";
+import { useSubgraphStatus } from "./services/SubgraphStatus";
 
 type Options = {
   refetchInterval?: number;
@@ -83,13 +97,22 @@ export function useLoansByAccount(
   account?: Address | null,
   options?: Options,
 ) {
+  const { setError, clearError } = useSubgraphStatus();
   let queryFn = async () => {
     if (!account) return null;
-    const { troves } = await graphQuery(
-      TrovesByAccountQuery,
-      { account: account.toLowerCase() },
-    );
-    return troves.map(subgraphTroveToLoan);
+    try {
+      const { troves } = await graphQuery(
+        TrovesByAccountQuery,
+        { account: account.toLowerCase() },
+      );
+      clearError("trovesByAccount");
+      return troves.map(subgraphTroveToLoan);
+    } catch (error) {
+      setError("trovesByAccount", error as Error);
+      console.error("Error fetching troves by account from the subgraph, using read calls instead\n\n", error);
+      const troves = await getTrovesByAccount(account);
+      return troves.map(readCallTroveToLoan);
+    }
   };
 
   if (DEMO_MODE) {
@@ -101,6 +124,26 @@ export function useLoansByAccount(
 
   return useQuery({
     queryKey: ["TrovesByAccount", account],
+    queryFn,
+    ...prepareOptions(options),
+  });
+}
+
+export function useLoansByAccounts(
+  accounts?: Address[],
+  options?: Options,
+) {
+  let queryFn = async () => {
+    if (!accounts || accounts.length === 0) return null;
+    const { troves } = await graphQuery(
+      TrovesByAccountsQuery,
+      { accounts: accounts.map(account => account.toLowerCase()) },
+    );
+    return troves.map(subgraphTroveToLoan);
+  }
+
+  return useQuery({
+    queryKey: ["TrovesByAccounts", accounts],
     queryFn,
     ...prepareOptions(options),
   });
@@ -163,10 +206,19 @@ export function useLoanById(
   id?: null | PrefixedTroveId,
   options?: Options,
 ) {
+  const { setError, clearError } = useSubgraphStatus();
   let queryFn = async () => {
     if (!isPrefixedtroveId(id)) return null;
-    const { trove } = await graphQuery(TroveByIdQuery, { id });
-    return trove ? subgraphTroveToLoan(trove) : null;
+    try {
+      const { trove } = await graphQuery(TroveByIdQuery, { id });
+      clearError("troveById");
+      return trove ? subgraphTroveToLoan(trove) : null;
+    } catch (error) {
+      setError("troveById", error as Error);
+      console.error("Error fetching trove by id from the subgraph, using read calls instead\n\n", error);
+      const trove = await getTroveById(id);
+      return trove ? readCallTroveToLoan(trove) : null;
+    }
   };
 
   if (DEMO_MODE) {
@@ -235,9 +287,18 @@ export function useStabilityPoolDeposits(
     };
   }
 
-  return useQuery<NonNullable<
-    StabilityPoolDepositQueryType["stabilityPoolDeposit"]
-  >[]>({
+  return useQuery<{
+    id: string;
+    collateral: { collIndex: number };
+    deposit: bigint;
+    depositor: string;
+    snapshot: {
+      B: bigint;
+      P: bigint;
+      S: bigint;
+      scale: bigint;
+    };
+  }[]>({
     queryKey: ["StabilityPoolDepositsByAccount", account],
     queryFn,
     ...prepareOptions(options),
@@ -295,9 +356,18 @@ export function useStabilityPoolDeposit(
 
   return useQuery<
     | null
-    | NonNullable<
-      StabilityPoolDepositQueryType["stabilityPoolDeposit"]
-    >
+    | {
+        id: string;
+        collateral: { collIndex: number };
+        deposit: bigint;
+        depositor: string;
+        snapshot: {
+          B: bigint;
+          P: bigint;
+          S: bigint;
+          scale: bigint;
+        };
+      }
   >({
     queryKey: ["StabilityPoolDeposit", account, collIndex],
     queryFn,
@@ -374,40 +444,58 @@ export function useStabilityPoolScale(
   });
 }
 
-export function useEarnPositionsByAccount(
-  account?: null | Address,
-  options?: Options,
-) {
-  let queryFn = async () => {
-    if (!account) return null;
-    const { stabilityPoolDeposits } = await graphQuery(
-      StabilityPoolDepositsByAccountQuery,
-      { account: account.toLowerCase() },
-    );
-    return stabilityPoolDeposits.map(subgraphStabilityPoolDepositToEarnPosition);
-  };
+// export function useEarnPositionsByAccount(
+//   account?: null | Address,
+//   options?: Options,
+// ) {
+//   let queryFn = async () => {
+//     if (!account) return null;
+//     const { stabilityPoolDeposits } = await graphQuery(
+//       StabilityPoolDepositsByAccountQuery,
+//       { account: account.toLowerCase() },
+//     );
+//     return stabilityPoolDeposits.map(subgraphStabilityPoolDepositToEarnPosition);
+//   };
 
-  if (DEMO_MODE) {
-    queryFn = async () =>
-      account
-        ? ACCOUNT_POSITIONS.filter((position) => position.type === "earn")
-        : null;
-  }
+//   if (DEMO_MODE) {
+//     queryFn = async () =>
+//       account
+//         ? ACCOUNT_POSITIONS.filter((position) => position.type === "earn")
+//         : null;
+//   }
 
-  return useQuery({
-    queryKey: ["StabilityPoolDepositsByAccount", account],
-    queryFn,
-    ...prepareOptions(options),
-  });
-}
+//   return useQuery({
+//     queryKey: ["StabilityPoolDepositsByAccount", account],
+//     queryFn,
+//     ...prepareOptions(options),
+//   });
+// }
 
 export function useInterestRateBrackets(
   collIndex: null | CollIndex,
   options?: Options,
 ) {
-  let queryFn = async () => (
-    (await graphQuery(AllInterestRateBracketsQuery)).interestRateBrackets
-  );
+  const { setError, clearError } = useSubgraphStatus();
+  const { collaterals } = getContracts();
+
+  let queryFn = async () => {
+    try {
+      const brackets = (await graphQuery(AllInterestRateBracketsQuery)).interestRateBrackets
+      clearError("allInterestRateBrackets");
+      return brackets;
+    } catch (error) {
+      setError("allInterestRateBrackets", error as Error);
+      console.error("Error fetching interest rate brackets from the subgraph, using read calls instead\n\n", error);
+      const debtPerInterestRate = await getAllDebtPerInterestRate();
+      return Object.entries(debtPerInterestRate).flatMap(([collIndex, list]) => {
+        return list.map((data) => ({
+          rate: data.interestRate,
+          totalDebt: data.debt,
+          collateral: collaterals[Number(collIndex) as CollIndex]!,
+        }));
+      });
+    }
+  };
 
   if (DEMO_MODE) {
     queryFn = async () => [];
@@ -502,6 +590,179 @@ export function useGovernanceStats(options?: Options) {
   });
 }
 
+export function useTroveCount(options?: Options) {
+  let queryFn = async () => {
+    // Manual GraphQL query to avoid codegen issues
+    const query = `
+      query TroveStats {
+        troves(where: { status: active }) {
+          id
+          collateral {
+            collIndex
+          }
+        }
+      }
+    `;
+    
+    const response = await fetch(SUBGRAPH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/graphql-response+json",
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Error while fetching trove count from the subgraph");
+    }
+
+    const result = await response.json();
+    if (!result.data) {
+      throw new Error("Invalid response from the subgraph");
+    }
+
+    // Count troves by collateral index
+    const countByCollateral: Record<number, number> = {};
+    
+    for (const trove of result.data.troves) {
+      const collIndex = trove.collateral.collIndex;
+      countByCollateral[collIndex] = (countByCollateral[collIndex] || 0) + 1;
+    }
+    
+    // Return total count across all collaterals
+    return Object.values(countByCollateral).reduce((sum, count) => sum + count, 0);
+  };
+
+  if (DEMO_MODE) {
+    queryFn = async () => {
+      return ACCOUNT_POSITIONS.filter(isPositionLoanCommitted).length;
+    };
+  }
+
+  return useQuery({
+    queryKey: ["TroveCount"],
+    queryFn,
+    ...prepareOptions(options),
+  });
+}
+
+export function useAllActiveTroves(
+  pageSize: number,
+  skip: number,
+  orderBy: string,
+  orderDirection: "asc" | "desc",
+  options?: Options,
+) {
+  const fieldMap: Record<string, string> = {
+    debt: "debt",
+    deposit: "deposit",
+    interestRate: "interestRate",
+  };
+  const subgraphOrderBy = fieldMap[orderBy] ?? "debt";
+
+  let queryFn = async (): Promise<TroveExplorerItem[]> => {
+    const query = `
+      query AllActiveTroves($first: Int!, $skip: Int!) {
+        troves(
+          where: { debt_gt: "0" }
+          first: $first
+          skip: $skip
+          orderBy: ${subgraphOrderBy}
+          orderDirection: ${orderDirection}
+        ) {
+          id
+          borrower
+          createdAt
+          debt
+          deposit
+          interestRate
+          status
+          troveId
+          updatedAt
+          collateral {
+            collIndex
+            minCollRatio
+            token {
+              symbol
+              name
+            }
+          }
+          interestBatch {
+            annualInterestRate
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(SUBGRAPH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/graphql-response+json",
+      },
+      body: JSON.stringify({
+        query,
+        variables: {
+          first: pageSize,
+          skip,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Error while fetching active troves from the subgraph");
+    }
+
+    const result = await response.json();
+    if (!result.data) {
+      throw new Error("Invalid response from the subgraph");
+    }
+
+    return result.data.troves.map((trove: {
+      id: string;
+      borrower: string;
+      createdAt: string;
+      debt: string;
+      deposit: string;
+      interestRate: string;
+      status: string;
+      troveId: string;
+      updatedAt: string;
+      collateral: {
+        collIndex: number;
+        minCollRatio: string;
+        token: { symbol: string; name: string };
+      };
+      interestBatch: { annualInterestRate: string } | null;
+    }): TroveExplorerItem => ({
+      id: trove.id,
+      troveId: trove.troveId as TroveExplorerItem["troveId"],
+      borrower: trove.borrower as Address,
+      collateralSymbol: getContracts().collaterals[trove.collateral.collIndex]?.symbol ?? trove.collateral.token.symbol as CollateralSymbol,
+      collateralName: trove.collateral.token.name,
+      collIndex: trove.collateral.collIndex as CollIndex,
+      borrowed: dnum18(BigInt(trove.debt)),
+      deposit: dnum18(BigInt(trove.deposit)),
+      minCollRatio: BigInt(trove.collateral.minCollRatio),
+      interestRate: dnum18(BigInt(trove.interestBatch?.annualInterestRate ?? trove.interestRate)),
+      status: trove.status,
+      updatedAt: Number(trove.updatedAt) * 1000,
+      createdAt: Number(trove.createdAt) * 1000,
+    }));
+  };
+
+  if (DEMO_MODE) {
+    queryFn = async () => [];
+  }
+
+  return useQuery({
+    queryKey: ["AllActiveTroves", pageSize, skip, orderBy, orderDirection],
+    queryFn,
+    ...prepareOptions(options),
+  });
+}
+
 function subgraphTroveToLoan(
   trove: TrovesByAccountQueryType["troves"][number],
 ): PositionLoanCommitted {
@@ -535,26 +796,78 @@ function subgraphTroveToLoan(
   };
 }
 
-function subgraphStabilityPoolDepositToEarnPosition(
-  spDeposit: NonNullable<
-    StabilityPoolDepositQueryType["stabilityPoolDeposit"]
-  >,
-): PositionEarn {
-  const collIndex = spDeposit.collateral.collIndex;
+function readCallTroveToLoan(
+  trove: ReturnCombinedTroveReadCallData | ReturnTroveReadCallData,
+): PositionLoanCommitted {
+  if (!isTroveId(trove.troveId)) {
+    throw new Error(`Invalid trove ID: ${trove.id} / ${trove.troveId}`);
+  }
+
+  const collIndex = trove.collateral.collIndex;
   if (!isCollIndex(collIndex)) {
     throw new Error(`Invalid collateral index: ${collIndex}`);
   }
-  if (!isAddress(spDeposit.depositor)) {
-    throw new Error(`Invalid depositor address: ${spDeposit.depositor}`);
+
+  if (!isAddress(trove.borrower)) {
+    throw new Error(`Invalid borrower: ${trove.borrower}`);
   }
+
   return {
-    type: "earn",
-    owner: spDeposit.depositor,
+    // type: trove.mightBeLeveraged ? "multiply" : "borrow",
+    type: "borrow", // TODO: replace with real value
+    batchManager: isAddress(trove.interestBatch?.batchManager)
+      ? trove.interestBatch.batchManager
+      : null,
+    borrowed: dnum18(trove.debt),
+    borrower: trove.borrower,
     collIndex,
-    deposit: dnum18(spDeposit.deposit),
-    rewards: {
-      usnd: dnum18(0),
-      coll: dnum18(0),
-    },
+    // createdAt: Number(trove.createdAt) * 1000,
+    createdAt: 0, // TODO: replace with real value
+    deposit: dnum18(trove.deposit),
+    interestRate: dnum18(trove.interestBatch?.annualInterestRate ?? trove.interestRate),
+    troveId: trove.troveId,
+    // updatedAt: Number(trove.updatedAt) * 1000,
+    updatedAt: 0, // TODO: replace with real value
+    // status: trove.status,
+    status: enumToLoanStatus(trove.status),
   };
 }
+
+export function enumToLoanStatus(status: TroveStatus): "active" | "closed" | "liquidated" | "redeemed" {
+  switch (status) {
+    case TroveStatus.active:
+      return "active";
+    case TroveStatus.closedByOwner:
+      return "closed";
+    case TroveStatus.closedByLiquidation:
+      return "liquidated";
+    case TroveStatus.zombie:
+      return "redeemed";
+    default:
+      return "closed"; // loan is non-existent so we'll pretend it's closed
+  }
+}
+
+// function subgraphStabilityPoolDepositToEarnPosition(
+//   spDeposit: NonNullable<
+//     StabilityPoolDepositQueryType["stabilityPoolDeposit"]
+//   >,
+// ): PositionEarn {
+//   const collIndex = spDeposit.collateral.collIndex;
+//   if (!isCollIndex(collIndex)) {
+//     throw new Error(`Invalid collateral index: ${collIndex}`);
+//   }
+//   if (!isAddress(spDeposit.depositor)) {
+//     throw new Error(`Invalid depositor address: ${spDeposit.depositor}`);
+//   }
+//   return {
+//     type: "earn",
+//     owner: spDeposit.depositor,
+//     collIndex,
+//     deposit: dnum18(spDeposit.deposit),
+//     rewards: {
+//       usnd: dnum18(0),
+//       coll: dnum18(0),
+//     },
+//   };
+// }

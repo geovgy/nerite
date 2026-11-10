@@ -28,9 +28,9 @@ export const MAX_LTV_ALLOWED_RATIOS = {
   TBTC: 0.8696,
 };
 
-export const ETH_MAX_RESERVE = dn.from(0.1, 18); // leave 0.1 ETH when users click on "max" to deposit from their account
+export const ETH_MAX_RESERVE = dn.from(0.001, 18); // leave 0.001 ETH when users click on "max" to deposit from their account
 
-export const ETH_GAS_COMPENSATION = dn.from(0.0375, 18); // see contracts/src/Dependencies/Constants.sol
+export const ETH_GAS_COMPENSATION = dn.from(0.001, 18); // see contracts/src/Dependencies/Constants.sol
 export const MIN_ANNUAL_INTEREST_RATE = dn.from(0.005, 18); // 0.5% see contracts/src/Dependencies/Constants.sol
 export const MAX_ANNUAL_INTEREST_RATE = dn.from(2.5, 18); // 250% see contracts/src/Dependencies/Constants.sol
 

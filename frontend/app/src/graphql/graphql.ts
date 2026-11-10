@@ -1858,7 +1858,12 @@ export type BorrowerInfoQueryVariables = Exact<{
 
 export type BorrowerInfoQuery = { __typename?: 'Query', borrowerInfo?: { __typename?: 'BorrowerInfo', nextOwnerIndexes: Array<number>, troves: number, trovesByCollateral: Array<number> } | null };
 
-export type FullTroveFragmentFragment = { __typename?: 'Trove', id: string, borrower: string, closedAt?: bigint | null, createdAt: bigint, debt: bigint, deposit: bigint, interestRate: bigint, mightBeLeveraged: boolean, stake: bigint, status: TroveStatus, troveId: string, updatedAt: bigint, collateral: { __typename?: 'Collateral', id: string, minCollRatio: bigint, collIndex: number, token: { __typename?: 'Token', symbol: string, name: string } }, interestBatch?: { __typename?: 'InterestBatch', id: string, annualInterestRate: bigint, annualManagementFee: bigint, batchManager: string } | null } & { ' $fragmentName'?: 'FullTroveFragmentFragment' };
+export type FullTroveFragmentFragment = { __typename?: 'Trove', id: string, borrower: string, closedAt?: bigint | null, createdAt: bigint, debt: bigint, deposit: bigint, interestRate: bigint, mightBeLeveraged: boolean, stake: bigint, status: TroveStatus, troveId: string, updatedAt: bigint, collateral: { __typename?: 'Collateral', id: string, minCollRatio: bigint, collIndex: number, token: { __typename?: 'Token', symbol: string, name: string } }, interestBatch?: { __typename?: 'InterestBatch', id: string, annualInterestRate: bigint, annualManagementFee: bigint, batchManager: string } | null };
+
+export type TrovesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type TrovesQuery = { __typename?: 'Query', troves: Array<{ __typename?: 'Trove', id: string, borrower: string, closedAt?: bigint | null, createdAt: bigint, debt: bigint, deposit: bigint, interestRate: bigint, mightBeLeveraged: boolean, stake: bigint, status: TroveStatus, troveId: string, updatedAt: bigint, collateral: { __typename?: 'Collateral', id: string, minCollRatio: bigint, collIndex: number, token: { __typename?: 'Token', symbol: string, name: string } }, interestBatch?: { __typename?: 'InterestBatch', id: string, annualInterestRate: bigint, annualManagementFee: bigint, batchManager: string } | null }> };
 
 export type TrovesByAccountQueryVariables = Exact<{
   account: Scalars['Bytes']['input'];
@@ -1866,6 +1871,13 @@ export type TrovesByAccountQueryVariables = Exact<{
 
 
 export type TrovesByAccountQuery = { __typename?: 'Query', troves: Array<{ __typename?: 'Trove', id: string, borrower: string, closedAt?: bigint | null, createdAt: bigint, debt: bigint, deposit: bigint, interestRate: bigint, mightBeLeveraged: boolean, stake: bigint, status: TroveStatus, troveId: string, updatedAt: bigint, collateral: { __typename?: 'Collateral', id: string, minCollRatio: bigint, collIndex: number, token: { __typename?: 'Token', symbol: string, name: string } }, interestBatch?: { __typename?: 'InterestBatch', id: string, annualInterestRate: bigint, annualManagementFee: bigint, batchManager: string } | null }> };
+
+export type TrovesByAccountsQueryVariables = Exact<{
+  accounts: Array<Scalars['Bytes']['input']> | Scalars['Bytes']['input'];
+}>;
+
+
+export type TrovesByAccountsQuery = { __typename?: 'Query', troves: Array<{ __typename?: 'Trove', id: string, borrower: string, closedAt?: bigint | null, createdAt: bigint, debt: bigint, deposit: bigint, interestRate: bigint, mightBeLeveraged: boolean, stake: bigint, status: TroveStatus, troveId: string, updatedAt: bigint, collateral: { __typename?: 'Collateral', id: string, minCollRatio: bigint, collIndex: number, token: { __typename?: 'Token', symbol: string, name: string } }, interestBatch?: { __typename?: 'InterestBatch', id: string, annualInterestRate: bigint, annualManagementFee: bigint, batchManager: string } | null }> };
 
 export type TroveByIdQueryVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -1879,7 +1891,7 @@ export type StabilityPoolsQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type StabilityPoolsQuery = { __typename?: 'Query', stabilityPools: Array<{ __typename?: 'StabilityPool', id: string, totalDeposited: bigint }> };
 
-export type StabilityPoolDepositFragmentFragment = { __typename?: 'StabilityPoolDeposit', id: string, deposit: bigint, depositor: string, collateral: { __typename?: 'Collateral', collIndex: number }, snapshot: { __typename?: 'StabilityPoolDepositSnapshot', B: bigint, P: bigint, S: bigint, scale: bigint } } & { ' $fragmentName'?: 'StabilityPoolDepositFragmentFragment' };
+export type StabilityPoolDepositFragmentFragment = { __typename?: 'StabilityPoolDeposit', id: string, deposit: bigint, depositor: string, collateral: { __typename?: 'Collateral', collIndex: number }, snapshot: { __typename?: 'StabilityPoolDepositSnapshot', B: bigint, P: bigint, S: bigint, scale: bigint } };
 
 export type StabilityPoolDepositsByAccountQueryVariables = Exact<{
   account: Scalars['Bytes']['input'];
@@ -1942,13 +1954,17 @@ export class TypedDocumentString<TResult, TVariables>
   extends String
   implements DocumentTypeDecoration<TResult, TVariables>
 {
-  __apiType?: DocumentTypeDecoration<TResult, TVariables>['__apiType'];
+  __apiType?: NonNullable<DocumentTypeDecoration<TResult, TVariables>['__apiType']>;
+  private value: string;
+  public __meta__?: Record<string, any> | undefined;
 
-  constructor(private value: string, public __meta__?: Record<string, any> | undefined) {
+  constructor(value: string, __meta__?: Record<string, any> | undefined) {
     super(value);
+    this.value = value;
+    this.__meta__ = __meta__;
   }
 
-  toString(): string & DocumentTypeDecoration<TResult, TVariables> {
+  override toString(): string & DocumentTypeDecoration<TResult, TVariables> {
     return this.value;
   }
 }
@@ -2008,6 +2024,39 @@ export const BorrowerInfoDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<BorrowerInfoQuery, BorrowerInfoQueryVariables>;
+export const TrovesDocument = new TypedDocumentString(`
+    query Troves {
+  troves(orderBy: updatedAt, orderDirection: desc) {
+    id
+    borrower
+    closedAt
+    createdAt
+    debt
+    deposit
+    interestRate
+    mightBeLeveraged
+    stake
+    status
+    troveId
+    updatedAt
+    collateral {
+      id
+      token {
+        symbol
+        name
+      }
+      minCollRatio
+      collIndex
+    }
+    interestBatch {
+      id
+      annualInterestRate
+      annualManagementFee
+      batchManager
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<TrovesQuery, TrovesQueryVariables>;
 export const TrovesByAccountDocument = new TypedDocumentString(`
     query TrovesByAccount($account: Bytes!) {
   troves(
@@ -2045,6 +2094,43 @@ export const TrovesByAccountDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<TrovesByAccountQuery, TrovesByAccountQueryVariables>;
+export const TrovesByAccountsDocument = new TypedDocumentString(`
+    query TrovesByAccounts($accounts: [Bytes!]!) {
+  troves(
+    where: {borrower_in: $accounts, status_in: [active, redeemed, liquidated]}
+    orderBy: updatedAt
+    orderDirection: desc
+  ) {
+    id
+    borrower
+    closedAt
+    createdAt
+    debt
+    deposit
+    interestRate
+    mightBeLeveraged
+    stake
+    status
+    troveId
+    updatedAt
+    collateral {
+      id
+      token {
+        symbol
+        name
+      }
+      minCollRatio
+      collIndex
+    }
+    interestBatch {
+      id
+      annualInterestRate
+      annualManagementFee
+      batchManager
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<TrovesByAccountsQuery, TrovesByAccountsQueryVariables>;
 export const TroveByIdDocument = new TypedDocumentString(`
     query TroveById($id: ID!) {
   trove(id: $id) {

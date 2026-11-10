@@ -15,6 +15,7 @@ import {
 } from "@liquity2/uikit";
 import * as dn from "dnum";
 import Link from "next/link";
+import { dnum18 } from "@/src/dnum-utils";
 
 export function EarnPositionSummary({
   collIndex,
@@ -26,7 +27,7 @@ export function EarnPositionSummary({
 }: {
   collIndex: CollIndex;
   prevEarnPosition?: PositionEarn | null;
-  earnPosition: PositionEarn | null;
+  earnPosition: PositionEarn | null | undefined;
   linkToScreen?: boolean;
   title?: ReactNode;
   txPreviewMode?: boolean;
@@ -34,17 +35,27 @@ export function EarnPositionSummary({
   const collToken = getCollToken(collIndex);
   const earnPool = useEarnPool(collIndex);
 
-  const { totalDeposited: totalPoolDeposit } = earnPool.data;
+  const { totalDeposited: totalPoolDeposit } = earnPool.data ?? { totalDeposited: dnum18(0) };
 
   let share = dn.from(0, 18);
   let prevShare = dn.from(0, 18);
   if (totalPoolDeposit && dn.gt(totalPoolDeposit, 0)) {
     if (earnPosition) {
-      share = dn.div(earnPosition.deposit, totalPoolDeposit);
+      // Calculate the deposit difference (how much is being added/removed)
+      const depositDiff = prevEarnPosition
+        ? dn.sub(earnPosition.deposit, prevEarnPosition.deposit)
+        : earnPosition.deposit;
+      // In preview mode, add the difference to get the new total pool size
+      const total = txPreviewMode
+        ? dn.add(totalPoolDeposit, depositDiff)
+        : totalPoolDeposit;
+      share = dn.div(earnPosition.deposit, total);
     }
     if (prevEarnPosition) {
       prevShare = dn.div(prevEarnPosition.deposit, totalPoolDeposit);
     }
+  } else if (txPreviewMode) {
+    share = dn.from(1, 18);
   }
 
   // true if the user has any deposit
@@ -188,7 +199,7 @@ export function EarnPositionSummary({
                           "deposits earned over the last 24 hours.",
                         footerLink: {
                           label: "Check Dune for more details",
-                          href: "https://dune.com/liquity/liquity-v2",
+                          href: "https://dune.com/niftyteam/nerite",
                         },
                       }}
                     />
@@ -221,7 +232,7 @@ export function EarnPositionSummary({
                           "deposits earned over the past 7 days.",
                         footerLink: {
                           label: "Check Dune for more details",
-                          href: "https://dune.com/liquity/liquity-v2",
+                          href: "https://dune.com/niftyteam/nerite",
                         },
                       }}
                     />
@@ -352,6 +363,7 @@ export function EarnPositionSummary({
                     <TokenIcon.Group size='mini'>
                       <TokenIcon symbol='USND' />
                       <TokenIcon symbol={collToken.symbol} />
+                      <TokenIcon symbol='SUP' />
                     </TokenIcon.Group>
                   )}
                 </div>
